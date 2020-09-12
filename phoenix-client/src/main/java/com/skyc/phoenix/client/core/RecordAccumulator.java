@@ -41,6 +41,18 @@ public interface RecordAccumulator {
     List<RecordBatch> drainByRecordNum(int num);
 
     /**
+     * Has records left int the accumulator.
+     *
+     * @return
+     */
+    boolean hasUnDrained();
+
+    /**
+     * Abort un drained records
+     */
+    void abortUnDrainedRecords();
+
+    /**
      * close the accumulator which prevent the record appending to accumulator.
      */
     void close();

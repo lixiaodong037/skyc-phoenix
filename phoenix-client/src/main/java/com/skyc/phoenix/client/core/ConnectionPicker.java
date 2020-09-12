@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2020 Skyc, Inc. All Rights Reserved.
  */
 package com.skyc.phoenix.client.core;
 

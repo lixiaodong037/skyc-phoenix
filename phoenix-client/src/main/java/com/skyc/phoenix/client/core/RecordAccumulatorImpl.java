@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -119,6 +120,23 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
             }
         }
         return ready;
+    }
+
+    @Override
+    public boolean hasUnDrained() {
+        return this.batches.size() > 0;
+    }
+
+    @Override
+    public void abortUnDrainedRecords() {
+        synchronized(batches) {
+            Iterator<RecordBatch> it = batches.iterator();
+            while (it.hasNext()) {
+                RecordBatch recordBatch = it.next();
+                bufferPool.release(recordBatch.buffers());
+                it.remove();
+            }
+        }
     }
 
     @Override
