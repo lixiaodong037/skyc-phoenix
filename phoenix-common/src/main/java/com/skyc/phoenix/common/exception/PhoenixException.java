@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2020 Skyc, Inc. All Rights Reserved.
  */
-package com.skyc.phoenix.client.exception;
+package com.skyc.phoenix.common.exception;
 
 /**
  * the phoenix exception for RuntimeException

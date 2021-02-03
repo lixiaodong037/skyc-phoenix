@@ -1,4 +1,7 @@
-package com.skyc.phoenix.client.exception;
+/*
+ * Copyright (C) 2020 Skyc, Inc. All Rights Reserved.
+ */
+package com.skyc.phoenix.common.exception;
 
 public class PhoenixConfigException extends PhoenixException {
 
