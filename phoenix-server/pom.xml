@@ -72,11 +72,14 @@
         </profile>
     </profiles>
 
-    <dependencyManagement>
-        <dependencies>
-        </dependencies>
-    </dependencyManagement>
     <dependencies>
-
+        <dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-all</artifactId>
+		</dependency>
+        <dependency>
+                <groupId>com.skyc.phoenix</groupId>
+                <artifactId>phoenix-common</artifactId>
+            </dependency>
     </dependencies>
 </project>

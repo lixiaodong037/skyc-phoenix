@@ -1,0 +1,17 @@
+package com.skyc.phoenix.common.codec.proto;
+
+option optimize_for = SPEED;      
+option java_package = "com.skyc.phoenix.common.codec";
+option java_outer_classname = "ProtobufData";
+
+// ProtobufData
+message ProtobufData  {
+	// topic		
+	optional string topic = 1;
+	// partition under topic
+	optional string part = 2;	 
+	// msgId		
+	optional bytes  msgId = 3; 		
+	// payload		
+	optional bytes  payload = 4; 
+}  

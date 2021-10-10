@@ -18,12 +18,18 @@ public class ByteBufferReceive implements Receive {
 
     private ByteBuffer contentBuffer;
 
+    private String sendDest;
+
     private int maxSize;
 
     public void ByteBufferReceive(BufferPool bufferPool) {
         this.sizeBuffer = ByteBuffer.allocate(4);
         this.bufferPool = bufferPool;
         this.contentBuffer = null;
+    }
+
+    public ByteBufferReceive(String sendDest) {
+        this.sendDest = sendDest;
     }
 
     @Override
@@ -71,5 +77,10 @@ public class ByteBufferReceive implements Receive {
             bufferPool.release(contentBuffer);
             contentBuffer = null;
         }
+    }
+
+    @Override
+    public String sendDest() {
+        return this.sendDest;
     }
 }

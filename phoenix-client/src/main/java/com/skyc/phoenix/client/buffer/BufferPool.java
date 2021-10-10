@@ -39,6 +39,7 @@ public final class BufferPool {
     public BufferPool(int batchSize, long totalMemory) {
         this.batchSize = batchSize;
         this.totalMemory = totalMemory;
+        this.nonPooledAvailableMemory = totalMemory;
         this.lock = new ReentrantLock();
         this.freeList = new ArrayDeque<ByteBuffer>();
         this.waiters = new ArrayDeque<Condition>();
@@ -210,6 +211,20 @@ public final class BufferPool {
 
     public void release(ByteBuffer buffer) {
         release(buffer, buffer.capacity());
+    }
+
+    /**
+     * the number of threads blocked waiting on memory
+     *
+     * @return
+     */
+    public int queued() {
+        lock.lock();
+        try {
+            return this.waiters.size();
+        } finally {
+            lock.unlock();
+        }
     }
 
 }

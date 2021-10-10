@@ -6,6 +6,8 @@ package com.skyc.phoenix.client.network;
 import java.io.Closeable;
 import java.io.IOException;
 
+import com.skyc.phoenix.common.node.ServerNode;
+
 /**
  * This class is responsible for listening accept/read/write event.
  * dispatch the
@@ -13,15 +15,14 @@ import java.io.IOException;
 public interface NetworkClient extends Closeable {
 
     /**
-     * create and init a network connection.
+     * Create and init a network connection.
      *
-     * @param host
-     * @param port
+     * @param node
      * @param sendBufferSize
      * @param receiveBufferSize
      * @return
      */
-    void initConnection(String host, int port, int sendBufferSize, int receiveBufferSize);
+    void initConnection(ServerNode node, int sendBufferSize, int receiveBufferSize);
 
     /**
      * poll from selector waiting up to he given timeout
@@ -33,9 +34,9 @@ public interface NetworkClient extends Closeable {
     /**
      * send the content to one {#NetworkConnection}
      *
-     * @param send the content to send
+     * @param clientRequest the content to send
      */
-    void send(Send send);
+    void send(ClientRequest clientRequest);
 
     /**
      * wakeup the connection

@@ -1,6 +1,6 @@
 package com.skyc.phoenix.client.exception;
 
-public class PhoenixTimeoutException extends PhoenixException {
+public class PhoenixTimeoutException extends RuntimeException {
 
     public PhoenixTimeoutException() {
     }

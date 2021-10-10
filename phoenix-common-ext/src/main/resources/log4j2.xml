@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (C) 2020 Skyc, Inc. All Rights Reserved.
+  -->
+<configuration status="error">
+    <appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%t] %-5level %class{36} %L %M - %msg%xEx%n"/>
+        </Console>
+
+        <!--处理INFO级别的日志，并把该日志放到logs/sitemap.log文件中-->
+        <RollingFile name="DailyRollingFile" fileName="./logs/phoenix.log"
+                     filePattern="./logs/logreceiverNg.log.%d{yyyy-MM-dd}">
+            <Filters>
+                <!--只接受INFO及以上级别的日志，其余的全部拒绝处理-->
+                <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <PatternLayout
+                    pattern="[%d{yyyy-MM-dd HH:mm:ss}] [%t] %-5level %class{36} %L %M - %msg%xEx%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            </Policies>
+            <DefaultRolloverStrategy max="100">
+                <Delete basePath="./logs/" maxDepth="2">
+                    <IfFileName glob="logreceiverNg.log.*"/>
+                    <IfLastModified age="7d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+    </appenders>
+
+    <loggers>
+        <asyncRoot level="INFO" includeLocation="true">
+            <appender-ref ref="Console"/>
+            <appender-ref ref="DailyRollingFile"/>
+        </asyncRoot>
+
+        <!--log4j2 自带过滤日志-->
+        <AsyncLogger name="org.springframework" level="WARN" includeLocation="true"/>
+        <AsyncLogger name="org.apache.zookeeper" level="WARN" includeLocation="true"/>
+    </loggers>
+
+</configuration>

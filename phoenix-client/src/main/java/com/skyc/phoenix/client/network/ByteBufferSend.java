@@ -7,6 +7,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.GatheringByteChannel;
+import java.util.Arrays;
 
 /**
  * The ByteBuffers to send.
@@ -19,6 +20,7 @@ public class ByteBufferSend implements Send {
     private final ByteBuffer[] buffers;
     private final int size;
     private int remaining = 0;
+    private String destination;
 
     public ByteBufferSend(ByteBuffer... buffers) {
         this.buffers = buffers;
@@ -50,5 +52,15 @@ public class ByteBufferSend implements Send {
     @Override
     public long size() {
         return this.size;
+    }
+
+    @Override
+    public String destination() {
+        return this.destination;
+    }
+
+    @Override
+    public void setDestination(String destination) {
+        this.destination = destination;
     }
 }

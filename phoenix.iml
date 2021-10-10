@@ -8,6 +8,9 @@
       <sourceFolder url="file://$MODULE_DIR$/phoenix-client/src/main/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/phoenix-core/src/main/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/phoenix-common/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/phoenix-server-start/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/phoenix-sample/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/phoenix-sample/src/test/java" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

@@ -7,11 +7,13 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Objects;
+
+import com.skyc.phoenix.common.node.ServerNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A connection interface that define the network action for a connection.
@@ -20,15 +22,9 @@ import java.util.Objects;
  */
 public class NetworkConnectionImpl implements NetworkConnection {
 
-    /**
-     * the host
-     */
-    private String host;
+    private static final Logger log = LoggerFactory.getLogger(NetworkConnectionImpl.class);
 
-    /**
-     * the port
-     */
-    private int port;
+    private ServerNode node;
 
     /**
      * the sendBufferSize for a tcp request communication
@@ -63,19 +59,22 @@ public class NetworkConnectionImpl implements NetworkConnection {
     /**
      * constructor
      */
-    public NetworkConnectionImpl(String host, int port, int sendBufferSize, int receiveBufferSize,
+    public NetworkConnectionImpl(ServerNode node, int sendBufferSize, int receiveBufferSize,
                                  Selector nioSelector) {
-        this.host = host;
-        this.port = port;
+        this.node = node;
         this.sendBufferSize = sendBufferSize;
         this.receiveBufferSize = receiveBufferSize;
+        this.nioSelector = nioSelector;
     }
 
     @Override
     public void connect() throws IOException {
+        if (log.isInfoEnabled()) {
+            log.info("start connect server: " + this.node.toString());
+        }
         this.socketChannel = SocketChannel.open();
         configSocketChannel(socketChannel, this.sendBufferSize, receiveBufferSize);
-        SocketAddress socketAddress = new InetSocketAddress(host, port);
+        SocketAddress socketAddress = new InetSocketAddress(node.getHost(), node.getPort());
 
         // connect the remote
         try {
@@ -88,6 +87,9 @@ public class NetworkConnectionImpl implements NetworkConnection {
         this.selectionKey = socketChannel.register(this.nioSelector, SelectionKey.OP_CONNECT);
         // set the attachment for this selectionKey
         this.selectionKey.attach(this);
+        if (log.isInfoEnabled()) {
+            log.info("end connect server: " + this.node.toString());
+        }
     }
 
     @Override
@@ -149,23 +151,38 @@ public class NetworkConnectionImpl implements NetworkConnection {
         if (this.toSend.completed()) {
             SelectionKeyUtil.removeInterestOps(this.selectionKey, SelectionKey.OP_WRITE);
             this.toSend = null;
+            return result;
         }
-        return result;
+        return null;
     }
 
     @Override
     public Receive read() throws IOException, InterruptedException {
-        Receive receive = new ByteBufferReceive();
+        ByteBufferReceive receive = new ByteBufferReceive(node.toString());
         receive.readFrom(this.socketChannel);
         if (receive.completed()) {
             receive.payload().rewind();
+            return receive;
         }
-        return receive;
+        return null;
+    }
+
+    @Override
+    public boolean isReady() {
+        if (socketChannel.isConnected() & socketChannel.isOpen()) {
+            return true;
+        }
+        return false;
     }
 
     @Override
     public SelectionKey getSelectionKey() {
         return this.selectionKey;
+    }
+
+    @Override
+    public String destination() {
+        return node.toString();
     }
 
     @Override
@@ -176,12 +193,14 @@ public class NetworkConnectionImpl implements NetworkConnection {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
+
         NetworkConnectionImpl that = (NetworkConnectionImpl) o;
-        return port == that.port && Objects.equals(host, that.host);
+
+        return node.equals(that.node);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(host, port);
+        return node.hashCode();
     }
 }

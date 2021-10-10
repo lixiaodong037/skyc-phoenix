@@ -9,8 +9,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.skyc.phoenix.client.buffer.BufferPool;
-import com.skyc.phoenix.client.exception.PhoenixException;
-import com.skyc.phoenix.client.record.PhoenixRecord;
+import com.skyc.phoenix.client.exception.PhoenixClientException;
+import com.skyc.phoenix.client.record.FutureRecordMetaData;
+import com.skyc.phoenix.common.record.PhoenixRecord;
+import com.skyc.phoenix.client.record.RecordBatch;
+import com.skyc.phoenix.client.record.RecordCallback;
 
 /**
  * aggregate every {@link PhoenixRecord} into the {@link RecordBatch} which hold a {@link java.nio.ByteBuffer}
@@ -19,7 +22,7 @@ import com.skyc.phoenix.client.record.PhoenixRecord;
  * @author brucelee
  * @since jdk1.6
  */
-public final class RecordAccumulatorImpl implements RecordAccumulator {
+public class RecordAccumulatorImpl implements RecordAccumulator {
 
     private Deque<RecordBatch> batches;
 
@@ -29,13 +32,28 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
 
     private int batchSize;
 
-    private long totalBufferPoolSisze;
+    private long totalBufferPoolSize;
+
+    private long lingMs;
 
     private volatile boolean closed = false;
 
-    public RecordAccumulatorImpl(int batchSize, long totalBufferPoolSisze) {
+    /**
+     * Create a new RecordAccumulatorImpl instance.
+     *
+     * @param batchSize           size of every record batch
+     * @param totalBufferPoolSize the total memory for the buffer pool
+     * @param lingMs              a delay time to add before declaring a RecordBatch that isn't for sending. This
+     *                            allows time for
+     *                            more records to arrive. This can trade off some atency for potentially better
+     *                            throughput due to more
+     *                            batching (and hence fewer, larger requests).
+     */
+    public RecordAccumulatorImpl(int batchSize, long totalBufferPoolSize, long lingMs) {
+        this.batchSize = batchSize;
         this.batches = new ArrayDeque<RecordBatch>();
-        this.bufferPool = new BufferPool(batchSize, totalBufferPoolSisze);
+        this.bufferPool = new BufferPool(batchSize, totalBufferPoolSize);
+        this.lingMs = lingMs;
     }
 
     /**
@@ -45,15 +63,16 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
      * @return
      */
     @Override
-    public RecordAppendResult append(PhoenixRecord record, int maxTimeToBlockMs) throws InterruptedException {
+    public RecordAppendResult append(PhoenixRecord record, RecordCallback callback, long maxTimeToBlockMs)
+            throws InterruptedException {
         appendsInProgress.incrementAndGet();
 
         try {
             synchronized(batches) {
                 if (closed) {
-                    throw new PhoenixException("the accumulator and sender was closed.");
+                    throw new PhoenixClientException("the accumulator and sender was closed.");
                 }
-                RecordAppendResult appendResult = tryAppend(record);
+                RecordAppendResult appendResult = tryAppend(record, callback);
                 if (appendResult != null) {
                     return appendResult;
                 }
@@ -65,17 +84,18 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
 
             synchronized(batches) {
                 // try append first, because other thread may have allocated the buffer
-                RecordAppendResult appendResult = tryAppend(record);
+                RecordAppendResult appendResult = tryAppend(record, callback);
                 if (appendResult != null) {
+                    // release the buffer
                     this.bufferPool.release(buffer);
                     return appendResult;
                 }
 
                 RecordBatch rb = new RecordBatch(buffer);
-                appendResult = rb.tryAppend(record);
+                FutureRecordMetaData future = rb.tryAppend(record, callback);
                 batches.addLast(rb);
 
-                return appendResult;
+                return new RecordAppendResult(future, batches.size() > 1 || rb.isFull(), true);
             }
         } finally {
             appendsInProgress.decrementAndGet();
@@ -92,13 +112,17 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
         synchronized(batches) {
             while (currSize < maxSize) {
                 RecordBatch rb = batches.peekFirst();
-                if (currSize + rb.estimatedSizeInBytes() > maxSize && !ready.isEmpty()) {
+                if (rb != null) {
+                    if (currSize + rb.estimatedSizeInBytes() > maxSize && !ready.isEmpty()) {
+                        break;
+                    }
+
+                    rb = batches.pollFirst();
+                    currSize = currSize + rb.estimatedSizeInBytes();
+                    ready.add(rb);
+                } else {
                     break;
                 }
-
-                rb = batches.pollFirst();
-                currSize = currSize + rb.estimatedSizeInBytes();
-                ready.add(rb);
             }
         }
         return ready;
@@ -115,8 +139,12 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
             while (currNum < num) {
                 RecordBatch rb = batches.peekFirst();
                 rb = batches.pollFirst();
-                currNum++;
-                ready.add(rb);
+                if (rb != null) {
+                    currNum++;
+                    ready.add(rb);
+                } else {
+                    break;
+                }
             }
         }
         return ready;
@@ -128,15 +156,40 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
     }
 
     @Override
-    public void abortUnDrainedRecords() {
+    public void abortUnDrainedRecords(long abortTimestamp, RuntimeException abortReason) {
         synchronized(batches) {
             Iterator<RecordBatch> it = batches.iterator();
             while (it.hasNext()) {
                 RecordBatch recordBatch = it.next();
-                bufferPool.release(recordBatch.buffers());
                 it.remove();
+                recordBatch.abort(abortTimestamp, abortReason);
+                bufferPool.release(recordBatch.buffer());
             }
         }
+    }
+
+    @Override
+    public AccumulatorReadyCheckResult readyCheck() {
+        long nextReadyCheckDelayMs = Long.MAX_VALUE;
+        boolean exhausted = this.bufferPool.queued() > 0;
+        AccumulatorReadyCheckResult readyCheckResult = new AccumulatorReadyCheckResult();
+        synchronized(batches) {
+            RecordBatch batch = batches.peekFirst();
+            if (batch != null) {
+                long waitedTimeMs = batch.waitedTimeMs(System.currentTimeMillis());
+                boolean expired = waitedTimeMs > lingMs;
+                boolean canSend = batches.size() > 1 || batch.isFull() || exhausted || closed || expired;
+                if (canSend) {
+                    readyCheckResult.setReady(true);
+                    nextReadyCheckDelayMs = 0;
+                } else {
+                    readyCheckResult.setReady(false);
+                    long timeLeftMs = Math.max(lingMs - waitedTimeMs, 0);
+                    nextReadyCheckDelayMs = Math.min(timeLeftMs, nextReadyCheckDelayMs);
+                }
+            }
+        }
+        return readyCheckResult;
     }
 
     @Override
@@ -144,12 +197,16 @@ public final class RecordAccumulatorImpl implements RecordAccumulator {
         this.closed = true;
     }
 
-    private RecordAppendResult tryAppend(PhoenixRecord record) {
+    private RecordAppendResult tryAppend(PhoenixRecord record, RecordCallback callback) {
         RecordBatch last = batches.peekLast();
         if (last != null) {
-            return last.tryAppend(record);
+            FutureRecordMetaData future = last.tryAppend(record, callback);
+            if (future == null) {
+                return null;
+            } else {
+                return new RecordAppendResult(future, batches.size() > 1 || last.isFull(), true);
+            }
         }
         return null;
     }
-
 }

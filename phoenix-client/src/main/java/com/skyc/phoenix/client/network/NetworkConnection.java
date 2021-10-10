@@ -4,11 +4,10 @@
 package com.skyc.phoenix.client.network;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 
 /**
- * A connection to server, one connection corresponding to one remote server address.
+ * 一个网络连接器对象
  *
  * @author brucelee
  */
@@ -23,7 +22,8 @@ public interface NetworkConnection {
     void connect() throws IOException;
 
     /**
-     * judge whether the connection has
+     * 判断是否连接已经成功建立完毕，如果建立完成就移出opconnect信号，加入读信号
+     *
      * @return
      * @throws IOException
      */
@@ -69,10 +69,25 @@ public interface NetworkConnection {
     Receive read() throws IOException, InterruptedException;
 
     /**
+     * whether the current connection is ready to send
+     *
+     * @return
+     * @throws IOException
+     */
+    boolean isReady();
+
+    /**
      * get the selection key of this connection
      *
      * @return
      */
     SelectionKey getSelectionKey();
+
+    /**
+     * connection destination
+     *
+     * @return
+     */
+    String destination();
 
 }

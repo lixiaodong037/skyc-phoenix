@@ -32,4 +32,16 @@ public interface Send {
      * Size of the send
      */
     long size();
+
+    /**
+     * the destination of send
+     *
+     * @return
+     */
+    String destination();
+
+    /**
+     * set the dest to send
+     */
+    void setDestination(String destination);
 }

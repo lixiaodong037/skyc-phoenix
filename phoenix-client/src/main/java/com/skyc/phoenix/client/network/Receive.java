@@ -36,4 +36,10 @@ public interface Receive {
      * close the channel
      */
     void close();
+
+    /**
+     * the
+     * @return
+     */
+    String sendDest();
 }

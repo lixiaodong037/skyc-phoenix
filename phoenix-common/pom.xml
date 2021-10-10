@@ -79,32 +79,12 @@
                 <artifactId>slf4j-api</artifactId>
                 <version>1.7.1</version>
             </dependency>
-            <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java</artifactId>
-                <version>3.0.2</version>
-            </dependency>
-            <dependency>
-			    <groupId>com.esotericsoftware.kryo</groupId>
-                <artifactId>kryo</artifactId>
-                <version>2.24.0</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
          <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-         </dependency>
-         <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java</artifactId>
-                <version>3.0.2</version>
-         </dependency>
-         <dependency>
-			    <groupId>com.esotericsoftware.kryo</groupId>
-                <artifactId>kryo</artifactId>
-                <version>2.24.0</version>
          </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -138,6 +118,11 @@
             <artifactId>powermock-module-junit4</artifactId>
             <version>1.7.4</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.skyc.phoenix</groupId>
+            <artifactId>phoenix-common-ext</artifactId>
         </dependency>
 
     </dependencies>
